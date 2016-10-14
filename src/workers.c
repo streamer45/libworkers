@@ -14,14 +14,20 @@ struct workers {
   worker_t workers[N_THREADS_MAX];
   size_t n;
 
-  pthread_cond_t conds[3];
+  pthread_cond_t conds[4];
   pthread_mutex_t mutex;
 
   int locked;
 
   uint64_t nidle;
+  uint64_t nrunning;
   uint ndone;
   int done;
+
+  int all_idle;
+  int all_running;
+
+  uint64_t runs;
 
   job_t job;
   void *ctx;
@@ -39,11 +45,26 @@ static void *worker(void *ctx) {
 
     ++w->ctx->nidle;
 
-    if ( w->ctx->nidle >= w->ctx->n && (w->ctx->nidle % w->ctx->n) == 0 ) {
+    if (w->ctx->nidle == ( (w->ctx->runs + 1) * w->ctx->n)) {
+      ++w->ctx->runs;
+      //fprintf(stderr, "%zu increasing runs to %zu\n", w->id, w->ctx->runs);
+      w->ctx->all_idle = 1;
       pthread_cond_signal(&w->ctx->conds[1]);
     }
 
+    if (w->ctx->all_running) w->ctx->all_running = 0;
+
     pthread_cond_wait(&w->ctx->conds[0], &w->ctx->mutex);
+
+    ++w->ctx->nrunning;
+
+    if (w->ctx->nrunning == ( (w->ctx->runs) * w->ctx->n)) {
+      //fprintf(stderr, "%zu last to start running\n", w->id);
+      w->ctx->all_running = 1;
+      pthread_cond_signal(&w->ctx->conds[3]);
+    }
+
+    if (w->ctx->all_idle) w->ctx->all_idle = 0;
 
     if (w->ctx->done) {
       //fprintf(stderr, "%zu done!\n", w->id);
@@ -102,12 +123,14 @@ workers_t *workers_create(size_t n_workers, job_t job, void *ctx) {
 int workers_wait(workers_t *w) {
   if (!w) return -1;
   if (!w->locked) pthread_mutex_lock(&w->mutex);
-  if (w->nidle <= w->n || (w->nidle % w->n) != 0) {
-    //fprintf(stderr, "workers_wait: waiting %zu\n", w->nidle);
-    pthread_cond_wait(&w->conds[1], &w->mutex);
+
+  if (w->all_idle) {
+    //fprintf(stderr, "workers_wait: not waiting %zu %zu\n", w->runs, w->nidle);
   } else {
-    //fprintf(stderr, "workers_wait: not waiting %zu\n", w->nidle);
+    //fprintf(stderr, "workers_wait: waiting %zu %zu\n", w->runs, w->nidle);
+    pthread_cond_wait(&w->conds[1], &w->mutex);
   }
+
   w->locked = 0;
   pthread_mutex_unlock(&w->mutex);
   return 0;
@@ -116,7 +139,16 @@ int workers_wait(workers_t *w) {
 int workers_run(workers_t *w) {
   if (!w) return -1;
   if (!w->locked) pthread_mutex_lock(&w->mutex);
+
   pthread_cond_broadcast(&w->conds[0]);
+
+  if (w->all_running) {
+    //fprintf(stderr, "workers_run: not waiting %zu %zu\n", w->runs, w->nrunning);
+  } else {
+    //fprintf(stderr, "workers_run: waiting %zu %zu\n", w->runs, w->nrunning);
+    pthread_cond_wait(&w->conds[3], &w->mutex);
+  }
+
   w->locked = 0;
   pthread_mutex_unlock(&w->mutex);
   return 0;

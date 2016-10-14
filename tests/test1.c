@@ -38,19 +38,25 @@ int test() {
 
   fprintf(stderr, "started!\n");
 
-  check = 0;
+  for (int i = 0; i < 10000; ++i) {
 
-  ret = workers_run(w);
-  if (ret != 0) return -3;
+    check = 0;
 
-  fprintf(stderr, "running...\n");
+    ret = workers_run(w);
+    if (ret != 0) return -3;
 
-  ret = workers_wait(w);
-  if (ret != 0) return -4;
+    fprintf(stderr, "running...\n");
 
-  if (check != N_THREADS) {
-    fprintf(stderr, "this should never happen %d!\n", check);
-    return -5;
+    ret = workers_wait(w);
+    if (ret != 0) return -4;
+
+    fprintf(stderr, "done %d\n", check);
+
+    if (check != N_THREADS) {
+      fprintf(stderr, "this should never happen %d!\n", check);
+      return -5;
+    }
+
   }
 
   fprintf(stderr, "all done!\n");
