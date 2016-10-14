@@ -9,5 +9,5 @@ typedef void (*job_t) (void *ctx, size_t id);
 
 workers_t *workers_create(size_t n_workers, job_t job, void *ctx);
 int workers_wait(workers_t *w);
-int workers_wake(workers_t *w);
+int workers_run(workers_t *w);
 int workers_destroy(workers_t *w);

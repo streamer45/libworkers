@@ -17,7 +17,7 @@ int check = 0;
   }
 
 static void worker(void *ctx, size_t id) {
-  fprintf(stderr, "%d: doing some work! %s\n", id, (char *)ctx);
+  fprintf(stderr, " worker %d: doing some work with %s\n", id, (char *)ctx);
   __atomic_add_fetch(&check, 1, __ATOMIC_SEQ_CST);
 }
 
@@ -38,10 +38,10 @@ int test() {
 
   fprintf(stderr, "started!\n");
 
-  ret = workers_wake(w);
+  ret = workers_run(w);
   if (ret != 0) return -3;
 
-  //fprintf(stderr, "woken!\n");
+  fprintf(stderr, "running...\n");
 
   ret = workers_wait(w);
   if (ret != 0) return -4;
@@ -51,7 +51,7 @@ int test() {
     return -5;
   }
 
-  fprintf(stderr, "done! %d\n", check);
+  fprintf(stderr, "all done!\n");
 
   ret = workers_destroy(w);
   if (ret != 0) return -6;
