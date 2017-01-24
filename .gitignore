@@ -2,3 +2,4 @@
 *.a
 *.o
 tests/test0
+tests/test1
