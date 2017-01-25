@@ -1,6 +1,6 @@
 # libworkers
 
-## A micro library for scheduling multithreaded tasks
+## A micro library for running multithreaded tasks
 
 ### Build
 
